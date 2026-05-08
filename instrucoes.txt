@@ -1,0 +1,6 @@
+1. Definir a string criptografada
+2. Definir a palavra contida
+3. Criptografar a palavra contida
+4. Comparar com o texto criptografado
+4.1 Se bater: Salvar qual o numero de criptografia e descriptografar texto completo com o numero selecionado
+4.2 Senão: criptografar com o proximo numero
