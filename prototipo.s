@@ -5,30 +5,35 @@ criptografiaatual:
     .string ""
 criptografado:
     .string "fzaqhdkz drsz drstczmcn\n"
+msg_sucesso: 
+    .string "Encontrado!\n"
+msg_falha:   
+    .string "Não encontrado!\n"
 senha:
-    db 2
-
     .text
     .globl main
 main:
-    la t0, palavrapossivel   # t0 = endereço da palavra original
-    la t1, criptografado     # t1 = endereço do buffer criptografado
-    la t2, criptografiaatual
+
+    la a0, criptografado       # a0 = ponteiro para mensagem
+    la a1, criptografiaatual
+    la a2, palavrapossivel
+    li t1, 0              # índice para criptografiaatual
+    li t2, 0              # flag = 0 (não encontrado)
 
 encrypt_loop:
-    lb t3, 0(t0)             # t2 = próximo caractere
+    lb t3, 0(a2)             # t2 = próximo caractere
     beq t3, x0, done_encrypt # se for '\0', fim
 
     # se for letra minúscula
     addi t3, t3, 1           # soma 1 ao ASCII
-    sb t3, 0(t2)             # armazena no buffer de saída
+    sb t3, 0(a1)             # armazena no buffer de saída
 
-    addi t0, t0, 1           # avança na palavra original
-    addi t2, t2, 1           # avança no buffer criptografado
+    addi a2, a2, 1           # avança na palavra original
+    addi a1, a1, 1           # avança no buffer criptografado
     j encrypt_loop
 
 done_encrypt:
-    sb x0, 0(t2)             # termina string com '\0'
+    sb x0, 0(a1)             # termina string com '\0'
 
     # escrever no stdout (syscall 64)
     addi a0, x0, 1           # file descriptor 1 (stdout)
@@ -39,8 +44,6 @@ done_encrypt:
     
     j terminarscript
     
-compararstring:
-    
     
 terminarscript:
     # sair do programa (syscall 93)
@@ -48,3 +51,51 @@ terminarscript:
     li a7, 93                # syscall exit
     ecall
     
+
+
+
+
+
+loop_msg:
+    lb t0, 0(a0)          # caractere atual de mensagem
+    beq t0, zero, fim     # se fim da mensagem, acabou
+
+    # salvar ponteiros para comparar
+    mv t3, a0             # t3 percorre mensagem
+    mv t4, a1             # t4 percorre mensagem2
+
+loop_cmp:
+    lb t0, 0(t3)          # caractere da mensagem
+    lb a0, 0(t4)          # caractere da mensagem2
+
+    beq a0, zero, achou   # se mensagem2 acabou, substring encontrada
+    beq t0, zero, proximo # se mensagem acabou antes de mensagem2, próximo
+    bne t0, a0, proximo   # se caracteres diferentes, próximo
+
+    addi t3, t3, 1        # próximo caractere da mensagem
+    addi t4, t4, 1        # próximo caractere da mensagem2
+    j loop_cmp
+
+proximo:
+    addi a0, a0, 1        # avançar mensagem
+    j loop_msg
+
+achou:
+    li t2, 1              # substring encontrada
+
+fim:
+    # imprimir mensagem de sucesso ou falha
+    beq t2, zero, nao_encontrado
+    la a0, msg_sucesso
+    li a7, 4              # syscall imprimir string
+    ecall
+    j sair
+
+nao_encontrado:
+    la a0, msg_falha
+    li a7, 4              # syscall imprimir string
+    ecall
+
+sair:
+    li a7, 10             # syscall exit
+    ecall
