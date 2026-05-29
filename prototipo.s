@@ -1,8 +1,8 @@
 .data
 palavrapossivel:
-    .string "fzaqhdkz"
+    .string "beg"
 criptografado:
-    .string "fzaqhdkz drsz drstczmcn\n"
+    .string "beg\n"
 msg_sucesso: 
     .string "Encontrado!\n"
 msg_falha:   
@@ -12,42 +12,89 @@ senha:
     .globl main
 main:
 
-    la a0, criptografado       # a0 = ponteiro para mensagem
-    la a1, palavrapossivel     # a1 = mensagem após a criptografia
-    la a2, palavrapossivel     # a2 = uma das palavras possiveis
-    li t1, 0                   # t1 = Quantos saltos foram feitos para criptografar a palavra possivel
-    li t2, 0                   # t2 = flag de encontrado (1) ou não encontrado (0)
-    li t5, 25                  # t5 = maximo de possibilidades da cifra
-    j compara_msg              # chamar a primeira função
+    la a1, criptografado       # a1 = ponteiro para mensagem
+    la a2, palavrapossivel     # a2 = mensagem após a criptografia
+    la a3, palavrapossivel     # a3 = uma das palavras possiveis
+    li t0, 0                   # t0 = Quantos saltos foram feitos para criptografar a palavra possivel
+    li t1, 0                   # t1 = flag de encontrado (1) ou não encontrado (0)
+    li t2, 25                  # t2 = maximo de possibilidades da cifra
+    li t4, 0                   # t4 = tamanho de a1
+    li t5, 0                   # t5 = tamanho de a2         
+    li t6, 0                   # t6 = tamanho de a3
     
+    j proxima_comparacao       # chamar a primeira função
+
+proxima_comparacao:
+    sub a1, a1, t4
+    sub a2, a2, t5
+    sub a3, a3, t6
+    li t4, 0
+    li t5, 0
+    li t6, 0
+    j compara_msg
+
 compara_msg:
-    lb t0, 0(a0)          # caractere atual de mensagem
-    beq t0, zero, criptografar_msg     # se fim da mensagem, acabou
+    
+    lb s0, 0(a1)                          # caractere atual de mensagem
+    beq s0, zero, proximacriptografia     # se fim da mensagem, acabou
 
     # salvar ponteiros para comparar
-    mv t3, a0             # t3 percorre mensagem
-    mv t4, a1             # t4 percorre mensagem
+    mv s1, a1             # s1 percorre mensagem
+    mv s2, a2             # s2 percorre mensagem
     j compara_caractere
     
 compara_caractere:
-    lb t0, 0(t3)          # caractere da mensagem
-    lb t1, 0(t4)          # caractere da mensagem2
+    lb s0, 0(s1)          # caractere da mensagem
+    lb s3, 0(s2)          # caractere da mensagem2
 
-    beq t1, zero, achou   # se mensagem2 acabou, substring encontrada
-    beq t0, zero, proximo # se mensagem acabou antes de mensagem2, próximo
-    bne t0, t1, proximo   # se caracteres diferentes, próximo
+    beq s3, zero, achou   # se mensagem2 acabou, substring encontrada
+    beq s0, zero, proximo # se mensagem acabou antes de mensagem2, próximo
+    bne s0, s3, proximo   # se caracteres diferentes, próximo
 
-    addi t3, t3, 1        # próximo caractere da mensagem
-    addi t4, t4, 1        # próximo caractere da mensagem2
+    addi s1, s1, 1        # próximo caractere da mensagem
+    addi s2, s2, 1        # próximo caractere da mensagem2
     j compara_caractere
+    
+proximo:
+    addi a1, a1, 1        # avançar mensagem
+    addi t4, t4, 1
+    j compara_msg
 
+proximacriptografia:
+    addi t0, t0, 1               # adiciona 1 salto
+    beq t0, t2, fim               # se o maximo de possibilidades estourar, acaba o script
+
+    sub a1, a1, t4
+    sub a2, a2, t5
+    sub a3, a3, t6
+    li t4, 0
+    li t5, 0
+    li t6, 0
+
+    j criptografar_msg           # começa a criptografia
+    
+criptografar_msg:
+    #j nao_encontrado
+    lb s4, 0(a3)             # s4 = proximo caractere da palavra possivel
+    beq s4, x0, proxima_comparacao  # acabar a cryptografia se a ultima letra for \0
+
+    addi s4, s4, 1           # soma a quantidade de saltos a ao valor ASCII da letra atual da palavra possivel
+    sb s4, 0(a2)             # armazena a letra atual à criptografiaatual
+
+    addi a3, a3, 1           # avança na palavra original
+    addi a1, a1, 1           # avança no buffer criptografado
+    j criptografar_msg
+    
 achou:
-    li t2, 1              # substring encontrada
+    mv a0, t0
+    li a7, 1              # syscall imprimir string
+    ecall
+    li t1, 1              # substring encontrada
     j fim
     
 fim:
     # imprimir mensagem de sucesso ou falha
-    beq t2, zero, nao_encontrado
+    beq t1, zero, nao_encontrado
     la a0, msg_sucesso
     li a7, 4              # syscall imprimir string
     ecall
@@ -57,31 +104,11 @@ nao_encontrado:
     la a0, msg_falha
     li a7, 4              # syscall imprimir string
     ecall
+    j sair
     
 sair:
-    li a7, 10             # syscall exit
+    li a7, 93             # syscall exit
     ecall
     
-proximo:
-    addi a0, a0, 1        # avançar mensagem
-    j compara_msg
-
-criptografar_msg:
-    lb t6, 0(a2)             # t3 = proximo caractere da palavra possivel
-    beq t6, x0, compara_msg  # acabar a cryptografia se a ultima letra for \0
-
-    addi t6, t6, 1           # soma a quantidade de saltos a ao valor ASCII da letra atual da palavra possivel
-    sb t6, 0(a1)             # armazena a letra atual à criptografiaatual
-
-    addi a2, a2, 1           # avança na palavra original
-    addi a1, a1, 1           # avança no buffer criptografado
-    j criptografar_msg
-
-proximacriptografia:
-    addi t1, t1, 1               # adiciona 1 salto
-    beq t1, t5, nao_encontrado   # se o maximo de possibilidades estourar, acaba o script
-    j criptografar_msg           # começa a criptografia
     
     
-    
-
