@@ -1,18 +1,25 @@
 .data
 palavrapossivel:
-    .string "beg"
+    .string "cifra"
 criptografado:
-    .string "beg\n"
+    .string "mspbk no mockb\n"
 msg_sucesso: 
     .string "Encontrado!\n"
 msg_falha:   
     .string "Não encontrado!\n"
+msg_saltos:
+    .string "Saltos "
+msg_dois_pontos:
+    .string ": "
+msg_quebra:
+    .string "\n"
 senha:
     .text
     .globl main
 main:
 
     la a1, criptografado       # a1 = ponteiro para mensagem
+    mv s5, a1                  # s5 = inicio da mensagem criptografada
     la a2, palavrapossivel     # a2 = mensagem após a criptografia
     la a3, palavrapossivel     # a3 = uma das palavras possiveis
     li t0, 0                   # t0 = Quantos saltos foram feitos para criptografar a palavra possivel
@@ -76,25 +83,89 @@ proximacriptografia:
 criptografar_msg:
     #j nao_encontrado
     lb s4, 0(a3)             # s4 = proximo caractere da palavra possivel
-    beq s4, x0, proxima_comparacao  # acabar a cryptografia se a ultima letra for \0
+    beq s4, x0, fim_criptografia       # acabar a cryptografia se a ultima letra for \0
 
-    addi s4, s4, 1           # soma a quantidade de saltos a ao valor ASCII da letra atual da palavra possivel
+    addi s4, s4, 1           # soma 1 no valor ASCII da letra atual
+    li t3, 123               # 'z' + 1
+    blt s4, t3, escreve_char # se ainda estiver no alfabeto, escreve
+    addi s4, s4, -26         # se passou de 'z', volta para 'a'
+
+escreve_char:
     sb s4, 0(a2)             # armazena a letra atual à criptografiaatual
 
     addi a3, a3, 1           # avança na palavra original
-    addi a1, a1, 1           # avança no buffer criptografado
+    addi a2, a2, 1           # avança no buffer criptografado
+    addi t5, t5, 1           # conta quantos caracteres foram criptografados
+    addi t6, t6, 1           # conta quantos caracteres foram lidos da palavra original
     j criptografar_msg
+
+fim_criptografia:
+    sb x0, 0(a2)             # encerra a string criptografada
+    la a0, msg_saltos
+    li a7, 4                  # syscall imprimir string
+    ecall
+
+    mv a0, t0
+    li a7, 1                  # syscall imprimir inteiro
+    ecall
+
+    la a0, msg_dois_pontos
+    li a7, 4                  # syscall imprimir string
+    ecall
+
+    mv a0, a2                # prepara para voltar ao inicio do texto criptografado
+    sub a0, a0, t5
+    li a7, 4                  # syscall imprimir string
+    ecall
+    la a0, msg_quebra
+    li a7, 4                  # syscall imprimir string
+    ecall
+    j proxima_comparacao     # compara o texto criptografado com a frase
     
 achou:
-    mv a0, t0
-    li a7, 1              # syscall imprimir string
-    ecall
     li t1, 1              # substring encontrada
     j fim
     
 fim:
     # imprimir mensagem de sucesso ou falha
     beq t1, zero, nao_encontrado
+    mv a0, t0
+    li a7, 1              # syscall imprimir inteiro
+    ecall
+    la a0, msg_quebra
+    li a7, 4              # syscall imprimir string
+    ecall
+
+    mv t3, s5             # t3 percorre a mensagem criptografada para descriptografar
+
+descriptografar_msg:
+    lb s4, 0(t3)          # caractere atual
+    beq s4, zero, imprimir_descriptografada
+
+    li t4, 97             # 'a'
+    blt s4, t4, prox_char_descriptografada
+
+    li t5, 123            # 'z' + 1
+    bge s4, t5, prox_char_descriptografada
+
+    sub s4, s4, t0        # desfaz o deslocamento da cifra
+    blt s4, t4, ajusta_descriptografia
+
+salva_descriptografada:
+    sb s4, 0(t3)
+
+prox_char_descriptografada:
+    addi t3, t3, 1
+    j descriptografar_msg
+
+ajusta_descriptografia:
+    addi s4, s4, 26
+    j salva_descriptografada
+
+imprimir_descriptografada:
+    mv a0, s5
+    li a7, 4              # syscall imprimir string
+    ecall
     la a0, msg_sucesso
     li a7, 4              # syscall imprimir string
     ecall
